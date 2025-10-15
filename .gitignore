@@ -1,14 +1,28 @@
-# Archivos binarios
-*.exe
+# Binarios y compilados
 *.o
 *.obj
+*.exe
+*.out
+*.log
 
-# Carpeta de compilación
+# Carpetas de build y binarios
 dist/
 build/
 
-# Archivos temporales de VS Code
-.vscode/
+# Datos grandes o temporales
+data/*.csv
+!data/.gitkeep
+!data/small/*.csv   # Permite incluir datasets pequeños de prueba
 
-# Archivos de datos (CSV grandes, etc.)
-data/
+# Archivos de benchmarking y logs
+benchmarks/
+logs/
+
+# Archivos de entorno o editor
+.vscode/
+*.swp
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc

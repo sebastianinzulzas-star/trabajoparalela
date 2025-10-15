@@ -1,0 +1,1 @@
+echo "# Mantener la carpeta data en el repo" > data/.gitkeep
