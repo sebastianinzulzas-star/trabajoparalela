@@ -1,0 +1,11 @@
+# Archivos binarios
+*.exe
+*.o
+*.obj
+
+# Carpeta de compilación
+dist/
+build/
+
+# Archivos temporales de VS Code
+.vscode/
