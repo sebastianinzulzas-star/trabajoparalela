@@ -9,3 +9,6 @@ build/
 
 # Archivos temporales de VS Code
 .vscode/
+
+# Archivos de datos (CSV grandes, etc.)
+data/
