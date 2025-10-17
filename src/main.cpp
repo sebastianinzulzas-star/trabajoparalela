@@ -1,65 +1,107 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <filesystem>
+#include <clocale>
 
 #include "utils/structs.h"
 #include "utils/lector.h"
 #include "utils/corrector.h"
+#include "utils/paralelo.h"
 #include "utils/guardar.h"
 
-void mostrarUso(const std::string& exe) {
-    std::cout << "Uso: " << exe << " [pruebas|reales]\n";
-    std::cout << "  pruebas -> lee CSV de data/small/\n";
-    std::cout << "  reales  -> lee CSV de data/raw/\n";
+using namespace std;
+using namespace std::chrono;
+namespace fs = std::filesystem;
+
+void mostrarUso(const string& exe) {
+    cout << "Uso: " << exe << " -e <estudiantes.csv> -p <paes.csv> -c <correctas.csv> -r <resultados.csv>\n";
+    cout << "Ejemplo:\n  " << exe << " -e data/raw/estudiantes.csv -p data/raw/paes.csv -c data/raw/correctas.csv -r data/processed/resultados.csv\n";
+}
+
+void mostrarCabecera() {
+    cout << "=== Trabajo Computacion Paralela ./dist/programa GRUPO 0 ===\n";
+    cout << "Integrante A: Sebastian Inzulza\n";
+    cout << "===============================================\n\n";
+}
+
+void detectarDataset(const string& rutaEstudiantes) {
+    try {
+        auto size = fs::file_size(rutaEstudiantes);
+        if (size < 50'000) {
+            cout << "[INFO] Usando dataset de PRUEBAS (" << size << " bytes)\n";
+        } else {
+            cout << "[INFO] Usando dataset REAL (" << size << " bytes)\n";
+        }
+    } catch (...) {
+        cout << "[WARN] No se pudo determinar el tamaño del dataset.\n";
+    }
+    cout << endl;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    std::setlocale(LC_ALL, "C");
+
+    mostrarCabecera();
+
+    if (argc != 9) {
         mostrarUso(argv[0]);
         return 1;
     }
 
-    std::string tipo = argv[1];
-    std::string rutaEstudiantes, rutaCorrectas, rutaPAES;
+    string rutaEstudiantes, rutaPAES, rutaCorrectas, rutaSalida;
 
-    if (tipo == "pruebas") {
-        rutaEstudiantes = "data/small/estudiantes_small.csv";
-        rutaCorrectas   = "data/small/correctas_small.csv";
-        rutaPAES        = "data/small/paes_small.csv";
-    } else if (tipo == "reales") {
-        rutaEstudiantes = "data/raw/estudiantes.csv";
-        rutaCorrectas   = "data/raw/correctas.csv";
-        rutaPAES        = "data/raw/paes.csv";
-    } else {
-        mostrarUso(argv[0]);
-        return 1;
+    for (int i = 1; i < argc; i += 2) {
+        string flag = argv[i];
+        string valor = argv[i + 1];
+
+        if (flag == "-e") rutaEstudiantes = valor;
+        else if (flag == "-p") rutaPAES = valor;
+        else if (flag == "-c") rutaCorrectas = valor;
+        else if (flag == "-r") rutaSalida = valor;
+        else {
+            cerr << "[ERROR] Opcion no reconocida: " << flag << "\n";
+            mostrarUso(argv[0]);
+            return 1;
+        }
     }
 
     try {
-        // Leer archivos
+        detectarDataset(rutaEstudiantes);
+
         auto estudiantes = leerEstudiantes(rutaEstudiantes);
         auto correctas   = leerCorrectas(rutaCorrectas);
         auto paes        = leerPAES(rutaPAES);
 
-        std::cout << "✅ Estudiantes leidos: " << estudiantes.size() << "\n";
-        std::cout << "✅ Correctas leidas:   " << correctas.size() << "\n";
-        std::cout << "✅ PAES leídas:        " << paes.size() << "\n";
+        cout << "Estudiantes leidos: " << estudiantes.size() << "\n";
+        cout << "Correctas leidas:   " << correctas.size() << "\n";
+        cout << "PAES leidas:        " << paes.size() << "\n\n";
 
-        // Corregir secuencialmente
+        auto t1 = high_resolution_clock::now();
         auto resultados = corregirSecuencial(estudiantes, paes, correctas);
-        std::cout << "✅ Correccion completada (" << resultados.size() << " resultados generados)\n";
-
-        // 📁 Guardar resultados
-        std::string rutaSalida = (tipo == "pruebas")
-            ? "data/processed/resultados_small.csv"
-            : "data/processed/resultados.csv";
+        auto t2 = high_resolution_clock::now();
+        auto tiempoSec = duration_cast<milliseconds>(t2 - t1).count();
 
         guardarResultadosCSV(resultados, rutaSalida);
+        cout << "[TIME] Secuencial: " << tiempoSec << " ms\n\n";
 
-    } catch (const std::exception& e) {
-        std::cerr << "❌ Error: " << e.what() << "\n";
+        auto t3 = high_resolution_clock::now();
+        auto resultadosParalelo = corregirParalelo(estudiantes, paes, correctas);
+        auto t4 = high_resolution_clock::now();
+        auto tiempoPar = duration_cast<milliseconds>(t4 - t3).count();
+
+        string rutaParalelo = rutaSalida.substr(0, rutaSalida.find_last_of('.')) + "_paralelo.csv";
+        guardarResultadosCSV(resultadosParalelo, rutaParalelo);
+        cout << "[TIME] Paralelo:   " << tiempoPar << " ms\n\n";
+
+        cout << "[OK] Ejecucion completada correctamente.\n";
+        return 0;
+    }
+    catch (const exception& e) {
+        cerr << "[FATAL] Error: " << e.what() << "\n";
         return 1;
     }
-
-    return 0;
 }

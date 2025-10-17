@@ -34,6 +34,6 @@ void guardarResultadosCSV(const std::vector<Resultado>& resultados, const std::s
         std::cout << "📁 Resultados guardados en: " << rutaArchivo << std::endl;
     }
     catch (const std::exception& e) {
-        std::cerr << "❌ Error al guardar resultados: " << e.what() << std::endl;
+        std::cerr << " Error al guardar resultados: " << e.what() << std::endl;
     }
 }
